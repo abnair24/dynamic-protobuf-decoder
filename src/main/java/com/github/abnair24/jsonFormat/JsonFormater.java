@@ -1,5 +1,6 @@
 package com.github.abnair24.jsonFormat;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -10,13 +11,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JsonFormater {
 
-    public static String toJson(Message message) throws Exception {
-        JsonFormat.Printer printer = JsonFormat.printer();
+    private JsonFormat.Printer printer;
+
+    public JsonFormater() {
+        printer = JsonFormat.printer();
+    }
+
+    public String toJson(Message message) throws Exception {
         return printer.print(message);
     }
 
-    public static JsonObject toJsonObject(Message message) {
-        JsonFormat.Printer printer = JsonFormat.printer();
+    public JsonObject toJsonObject(Message message) {
         JsonParser jsonParser = new JsonParser();
         JsonObject jsonObject = null;
         try {
@@ -24,7 +29,14 @@ public class JsonFormater {
         } catch (InvalidProtocolBufferException e) {
             log.error("Json parser failed : {}",e.getMessage());
         }
-
         return jsonObject;
     }
+
+    public <Out> Out toClassObject(Message message, Class<Out> outputClass) throws Exception {
+        String response = printer.print(message);
+        Out out = new Gson().fromJson(response,outputClass);
+        return out;
+    }
+
+
 }
