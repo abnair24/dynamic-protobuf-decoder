@@ -2,11 +2,12 @@ package com.github.abnair24.protobufDecoder;
 
 import com.github.abnair24.cache.ProtoCache;
 import com.github.abnair24.exception.CacheLoadingException;
-import com.github.abnair24.jsonFormat.ProtoBufToJson;
+import com.github.abnair24.dynamicMessage.DynamicMessageProcessor;
 import com.github.abnair24.util.ProtoDetail;
 import com.google.gson.JsonObject;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.FileInputStream;
@@ -16,12 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
+@Getter
 public class ProtobufDecoder {
 
     private ProtoDetail protoDetail;
-    private List<Descriptors.FileDescriptor> fdList;
-    private Descriptors.Descriptor descriptor;
-    private ProtoBufToJson protoBufToJson;
+    private DynamicMessageProcessor dynamicMessageProcessor;
 
     public ProtobufDecoder(String protoPath, String fullMethodName) {
         this.protoDetail = new ProtoDetail(protoPath,fullMethodName);
@@ -31,29 +31,26 @@ public class ProtobufDecoder {
         return protoDetail;
     }
 
-    public JsonObject decode(byte[] input) {
+    public Descriptors.Descriptor invoke() {
         invokeProtoc();
-        getFileDescriptorsList();
-        descriptor = findMethodDescriptor(fdList);
-        protoBufToJson = new ProtoBufToJson(descriptor);
-        return protoBufToJson.protobufToJsonObject(input);
+        List<Descriptors.FileDescriptor> fileDescriptorList = new ArrayList<>();
+        fileDescriptorList = getFileDescriptorsList();
+        return findMethodDescriptor(fileDescriptorList);
     }
-
-//    public String decode(String input) {
-//        invokeProtoc();
-//        getFileDescriptorsList();
-//        descriptor = findMethodDescriptor(fdList);
-//        protoBufToJson = new ProtoBufToJson(descriptor);
-//        protoBufToJson.protobufToJsonObject();
-//    }
+    public JsonObject decode(byte[] input) {
+        Descriptors.Descriptor descriptor = invoke();
+        dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
+        dynamicMessageProcessor.toDynamicMessage(input);
+        return dynamicMessageProcessor.parse(input);
+    }
 
     private void invokeProtoc() {
         Path binaryPath = ProtoCache.getBinary(protoDetail);
         protoDetail.setDescriptorBinaryPath(binaryPath.toAbsolutePath().toString());
     }
 
-    private void getFileDescriptorsList(){
-        fdList = new ArrayList<>();
+    private List<Descriptors.FileDescriptor> getFileDescriptorsList(){
+        List<Descriptors.FileDescriptor> fdList = new ArrayList<>();
         try {
             DescriptorProtos.FileDescriptorSet fdSet = DescriptorProtos
                     .FileDescriptorSet.parseFrom(new FileInputStream(protoDetail.getDescriptorBinaryPath()));
@@ -67,11 +64,13 @@ public class ProtobufDecoder {
             log.error("Descriptor file not found in path : {}",protoDetail.getDescriptorBinaryPath());
             throw new RuntimeException(ex);
         }
+        return fdList;
     }
 
     private Descriptors.Descriptor findMethodDescriptor(List<Descriptors.FileDescriptor>fileDescriptorList) {
         String methodName = protoDetail.getMethodName();
         String packageName = protoDetail.getPackageName();
+        Descriptors.Descriptor descriptor = null;
 
         for (Descriptors.FileDescriptor fileDescriptor : fileDescriptorList) {
             if (!isPackageSame(fileDescriptor, packageName)) {
@@ -103,7 +102,7 @@ public class ProtobufDecoder {
     }
 
 
-    public static Descriptors.FileDescriptor findDependentFileDescriptors(DescriptorProtos.FileDescriptorProto fileDescriptorProto) {
+    public Descriptors.FileDescriptor findDependentFileDescriptors(DescriptorProtos.FileDescriptorProto fileDescriptorProto) {
 
         Descriptors.FileDescriptor fileDescriptor =null;
         List<String>dependencies = fileDescriptorProto.getDependencyList();

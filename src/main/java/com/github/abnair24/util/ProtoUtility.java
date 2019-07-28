@@ -11,7 +11,7 @@ import java.nio.file.Path;
 @Slf4j
 public class ProtoUtility {
 
-    public static Path getDescriptorBinary(ProtoDetail protoDetail) throws DescriptorBinaryException {
+    public static Path generateDescriptorBinary(ProtoDetail protoDetail) throws DescriptorBinaryException {
         int status;
         Path descFilePath;
 

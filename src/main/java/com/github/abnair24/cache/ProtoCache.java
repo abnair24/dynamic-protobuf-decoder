@@ -64,7 +64,7 @@ public class ProtoCache {
 
         try {
             if (path == null) {
-                path = ProtoUtility.getDescriptorBinary(protoDetail);
+                path = ProtoUtility.generateDescriptorBinary(protoDetail);
                 descriptorBinaryCache.put("descriptor.desc", path);
             }
         } catch (DescriptorBinaryException ex) {
