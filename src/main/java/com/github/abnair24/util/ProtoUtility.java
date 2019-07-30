@@ -7,11 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 @Slf4j
 public class ProtoUtility {
 
-    public static Path generateDescriptorBinary(ProtoDetail protoDetail) throws DescriptorBinaryException {
+    public static Path generateDescriptorBinary(final String protoPath, final List<String> protoFiles) throws DescriptorBinaryException {
         int status;
         Path descFilePath;
 
@@ -23,9 +24,9 @@ public class ProtoUtility {
             ImmutableList<String> protocArgs = ImmutableList.<String>builder()
                     .add("--include_imports")
                     .add("--include_std_types")
-                    .add("--proto_path=" + protoDetail.getProtoPath())
+                    .add("--proto_path=" + protoPath)
                     .add("--descriptor_set_out=" + descFilePath.toAbsolutePath().toString())
-                    .addAll(protoDetail.getProtoFiles())
+                    .addAll(protoFiles)
                     .build();
 
             status = Protoc.runProtoc(protocArgs.toArray(new String[0]));

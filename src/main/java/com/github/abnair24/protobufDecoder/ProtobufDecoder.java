@@ -7,12 +7,13 @@ import com.github.abnair24.util.ProtoDetail;
 import com.google.gson.JsonObject;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,33 +28,23 @@ public class ProtobufDecoder {
         this.protoDetail = new ProtoDetail(protoPath,fullMethodName);
     }
 
-    public ProtoDetail getProtoDetail() {
-        return protoDetail;
-    }
-
     public Descriptors.Descriptor invoke() {
-        invokeProtoc();
-        List<Descriptors.FileDescriptor> fileDescriptorList = new ArrayList<>();
-        fileDescriptorList = getFileDescriptorsList();
-        return findMethodDescriptor(fileDescriptorList);
+        List<Descriptors.FileDescriptor> fileDescriptorList = getFileDescriptorsList(protoDetail.getDescriptorBinaryPath());
+        return findMethodDescriptor(fileDescriptorList,protoDetail);
     }
     public JsonObject decode(byte[] input) {
         Descriptors.Descriptor descriptor = invoke();
         dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
         dynamicMessageProcessor.toDynamicMessage(input);
-        return dynamicMessageProcessor.parse(input);
+//        return dynamicMessageProcessor.parse(input);
+        return null;
     }
 
-    private void invokeProtoc() {
-        Path binaryPath = ProtoCache.getBinary(protoDetail);
-        protoDetail.setDescriptorBinaryPath(binaryPath.toAbsolutePath().toString());
-    }
-
-    private List<Descriptors.FileDescriptor> getFileDescriptorsList(){
+    private List<Descriptors.FileDescriptor> getFileDescriptorsList(String path){
         List<Descriptors.FileDescriptor> fdList = new ArrayList<>();
         try {
             DescriptorProtos.FileDescriptorSet fdSet = DescriptorProtos
-                    .FileDescriptorSet.parseFrom(new FileInputStream(protoDetail.getDescriptorBinaryPath()));
+                    .FileDescriptorSet.parseFrom(new FileInputStream(path));
 
             for (DescriptorProtos.FileDescriptorProto fileDescriptorProto : fdSet.getFileList()) {
                 fdList.add(ProtoCache.getFileDescriptor(fileDescriptorProto));
@@ -61,13 +52,13 @@ public class ProtobufDecoder {
         } catch (CacheLoadingException ex) {
             log.warn("Error loading from cache",ex.getMessage());
         } catch (IOException ex) {
-            log.error("Descriptor file not found in path : {}",protoDetail.getDescriptorBinaryPath());
+            log.error("Descriptor file not found in path : {}",path);
             throw new RuntimeException(ex);
         }
         return fdList;
     }
 
-    private Descriptors.Descriptor findMethodDescriptor(List<Descriptors.FileDescriptor>fileDescriptorList) {
+    private Descriptors.Descriptor findMethodDescriptor(List<Descriptors.FileDescriptor>fileDescriptorList,ProtoDetail protoDetail) {
         String methodName = protoDetail.getMethodName();
         String packageName = protoDetail.getPackageName();
         Descriptors.Descriptor descriptor = null;
@@ -88,21 +79,15 @@ public class ProtobufDecoder {
     }
 
     private boolean isPackageSame(Descriptors.FileDescriptor fileDescriptor,String packageName) {
-        boolean status;
-        if(fileDescriptor.getPackage() == "") {
+
+        if(StringUtils.isBlank(fileDescriptor.getPackage())) {
             log.error("Filedescriptor loading failed for file :{}",fileDescriptor.getName());
             throw new IllegalArgumentException("Package name empty in "+fileDescriptor.getName());
         }
-        if(packageName != null && packageName.equals(fileDescriptor.getPackage())) {
-            status = true;
-        } else {
-            status  = false;
-        }
-        return status;
+        return StringUtils.equalsIgnoreCase(packageName, fileDescriptor.getPackage());
     }
 
-
-    public Descriptors.FileDescriptor findDependentFileDescriptors(DescriptorProtos.FileDescriptorProto fileDescriptorProto) {
+    public static Descriptors.FileDescriptor findDependentFileDescriptors(DescriptorProtos.FileDescriptorProto fileDescriptorProto) {
 
         Descriptors.FileDescriptor fileDescriptor =null;
         List<String>dependencies = fileDescriptorProto.getDependencyList();

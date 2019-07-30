@@ -13,6 +13,7 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import lombok.extern.slf4j.Slf4j;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -57,14 +58,14 @@ public class ProtoCache {
         return fdCache.asMap().keySet();
     }
 
-    public static Path getBinary(ProtoDetail protoDetail) {
+    public static Path getBinary(final String protoPath, final List<String> protoFiles) {
 
         Path path = descriptorBinaryCache.getIfPresent("descriptor.desc");
         log.info("DescriptorCache Stats: {}",descriptorBinaryCache.stats());
 
         try {
             if (path == null) {
-                path = ProtoUtility.generateDescriptorBinary(protoDetail);
+                path = ProtoUtility.generateDescriptorBinary(protoPath, protoFiles);
                 descriptorBinaryCache.put("descriptor.desc", path);
             }
         } catch (DescriptorBinaryException ex) {

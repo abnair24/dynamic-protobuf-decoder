@@ -1,5 +1,6 @@
 package com.github.abnair24.util;
 
+import com.github.abnair24.cache.ProtoCache;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,12 +22,13 @@ public class ProtoDetail {
     private final List<String> protoFiles;
     private String descriptorBinaryPath;
 
-    public ProtoDetail(String protoPath, String fullMethodName) {
-
+    public ProtoDetail(String protoPath, String fullMethodName)
+    {
         this.protoPath = protoPath;
         this.packageName = findPackageName(fullMethodName);
         this.methodName = findMessageName(fullMethodName, packageName.length());
         this.protoFiles = getAllProtoFiles(protoPath);
+        this.descriptorBinaryPath = getBinaryPath();
     }
 
     private List<String> getAllProtoFiles(String protoPath) {
@@ -50,7 +52,8 @@ public class ProtoDetail {
         return fullMethodName.substring(length + 1);
     }
 
-    public void setDescriptorBinaryPath(String descriptorBinaryPath) {
-        this.descriptorBinaryPath = descriptorBinaryPath;
+    private String getBinaryPath() {
+        Path binaryPath = ProtoCache.getBinary(protoPath, protoFiles);
+        return binaryPath.toAbsolutePath().toString();
     }
 }
