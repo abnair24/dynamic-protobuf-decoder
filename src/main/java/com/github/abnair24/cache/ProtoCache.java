@@ -2,8 +2,6 @@ package com.github.abnair24.cache;
 
 import com.github.abnair24.exception.CacheLoadingException;
 import com.github.abnair24.exception.DescriptorBinaryException;
-import com.github.abnair24.protobufDecoder.ProtobufDecoder;
-import com.github.abnair24.util.ProtoDetail;
 import com.github.abnair24.util.ProtoUtility;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -30,7 +28,7 @@ public class ProtoCache {
             .build(new CacheLoader<DescriptorProtos.FileDescriptorProto, Descriptors.FileDescriptor>() {
                 @Override
                 public Descriptors.FileDescriptor load(DescriptorProtos.FileDescriptorProto key) throws Exception {
-                    return ProtobufDecoder.findDependentFileDescriptors(key);
+                    return ProtoUtility.findDependentFileDescriptors(key);
                 }
             });
 

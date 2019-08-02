@@ -18,15 +18,17 @@ public class ProtoDetail {
 
     private final String protoPath;
     private final String packageName;
-    private final String methodName;
+    private final String messageName;
     private final List<String> protoFiles;
-    private String descriptorBinaryPath;
+    private final String descriptorBinaryPath;
+    private final String fullMessageName;
 
-    public ProtoDetail(String protoPath, String fullMethodName)
+    public ProtoDetail(String protoPath, String fullMessageName)
     {
+        this.fullMessageName = fullMessageName;
         this.protoPath = protoPath;
-        this.packageName = findPackageName(fullMethodName);
-        this.methodName = findMessageName(fullMethodName, packageName.length());
+        this.packageName = findPackageName(fullMessageName);
+        this.messageName = findMessageName(fullMessageName, packageName.length());
         this.protoFiles = getAllProtoFiles(protoPath);
         this.descriptorBinaryPath = getBinaryPath();
     }

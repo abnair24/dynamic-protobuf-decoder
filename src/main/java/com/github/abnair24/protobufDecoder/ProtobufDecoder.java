@@ -1,122 +1,63 @@
 package com.github.abnair24.protobufDecoder;
 
-import com.github.abnair24.cache.ProtoCache;
-import com.github.abnair24.exception.CacheLoadingException;
 import com.github.abnair24.dynamicMessage.DynamicMessageProcessor;
 import com.github.abnair24.util.ProtoDetail;
+import com.github.abnair24.util.ProtoUtility;
 import com.google.gson.JsonObject;
-import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
-
+import com.google.protobuf.InvalidProtocolBufferException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 @Getter
 public class ProtobufDecoder {
 
-    private ProtoDetail protoDetail;
+    private final ProtoDetail protoDetail;
     private DynamicMessageProcessor dynamicMessageProcessor;
 
-    public ProtobufDecoder(String protoPath, String fullMethodName) {
-        this.protoDetail = new ProtoDetail(protoPath,fullMethodName);
+    private ProtobufDecoder(String protoPath, String fullMessageName) {
+        this.protoDetail = new ProtoDetail(protoPath,fullMessageName);
+    }
+
+    public static ProtobufDecoder create(String protoPath, String fullMessageName) {
+        return new ProtobufDecoder(protoPath,fullMessageName);
     }
 
     public Descriptors.Descriptor invoke() {
-        List<Descriptors.FileDescriptor> fileDescriptorList = getFileDescriptorsList(protoDetail.getDescriptorBinaryPath());
-        return findMethodDescriptor(fileDescriptorList,protoDetail);
+        List<Descriptors.FileDescriptor> fileDescriptorList = ProtoUtility.getFileDescriptorsList(protoDetail.getDescriptorBinaryPath());
+        return ProtoUtility.findMethodDescriptor(fileDescriptorList,protoDetail);
     }
+
+
     public JsonObject decode(byte[] input) {
-        Descriptors.Descriptor descriptor = invoke();
-        dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
-        dynamicMessageProcessor.toDynamicMessage(input);
-//        return dynamicMessageProcessor.parse(input);
-        return null;
-    }
-
-    private List<Descriptors.FileDescriptor> getFileDescriptorsList(String path){
-        List<Descriptors.FileDescriptor> fdList = new ArrayList<>();
+        JsonObject jsonObject = null;
         try {
-            DescriptorProtos.FileDescriptorSet fdSet = DescriptorProtos
-                    .FileDescriptorSet.parseFrom(new FileInputStream(path));
-
-            for (DescriptorProtos.FileDescriptorProto fileDescriptorProto : fdSet.getFileList()) {
-                fdList.add(ProtoCache.getFileDescriptor(fileDescriptorProto));
-            }
-        } catch (CacheLoadingException ex) {
-            log.warn("Error loading from cache",ex.getMessage());
-        } catch (IOException ex) {
-            log.error("Descriptor file not found in path : {}",path);
+            Descriptors.Descriptor descriptor = invoke();
+            dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
+            jsonObject = dynamicMessageProcessor.parse(input);
+        }catch(InvalidProtocolBufferException ex) {
+            log.error("Invalid protocol buffer parser : {}",ex.getMessage());
             throw new RuntimeException(ex);
         }
-        return fdList;
+        return jsonObject;
     }
 
-    private Descriptors.Descriptor findMethodDescriptor(List<Descriptors.FileDescriptor>fileDescriptorList,ProtoDetail protoDetail) {
-        String methodName = protoDetail.getMethodName();
-        String packageName = protoDetail.getPackageName();
-        Descriptors.Descriptor descriptor = null;
-
-        for (Descriptors.FileDescriptor fileDescriptor : fileDescriptorList) {
-            if (!isPackageSame(fileDescriptor, packageName)) {
-                continue;
-            }
-            descriptor = fileDescriptor.findMessageTypeByName(methodName);
-            break;
-        }
-
-        if(descriptor == null) {
-            log.error("Method name not found : {}",methodName);
-            throw new IllegalArgumentException("Method name not found :"+ methodName);
-        }
-        return descriptor;
-    }
-
-    private boolean isPackageSame(Descriptors.FileDescriptor fileDescriptor,String packageName) {
-
-        if(StringUtils.isBlank(fileDescriptor.getPackage())) {
-            log.error("Filedescriptor loading failed for file :{}",fileDescriptor.getName());
-            throw new IllegalArgumentException("Package name empty in "+fileDescriptor.getName());
-        }
-        return StringUtils.equalsIgnoreCase(packageName, fileDescriptor.getPackage());
-    }
-
-    public static Descriptors.FileDescriptor findDependentFileDescriptors(DescriptorProtos.FileDescriptorProto fileDescriptorProto) {
-
-        Descriptors.FileDescriptor fileDescriptor =null;
-        List<String>dependencies = fileDescriptorProto.getDependencyList();
-
-        List<Descriptors.FileDescriptor> fdlist = new ArrayList<>();
+    public <T> T decode(byte[] input, Class <T> response) {
+        T outputClass = null ;
         try {
-
-            for (String dep : dependencies) {
-                Descriptors.FileDescriptor fd = null;
-                for (DescriptorProtos.FileDescriptorProto fdp : ProtoCache.getAllFileDescriptorFromCache()) {
-                    if (dep.equals(fdp.getName())) {
-                        fd = ProtoCache.getFileDescriptor(fdp);
-                    }
-                }
-                if (fd != null) {
-                    fdlist.add(fd);
-                }
-            }
-            if (fdlist.size() == dependencies.size()) {
-                Descriptors.FileDescriptor[] fds = new Descriptors.FileDescriptor[fdlist.size()];
-                fileDescriptor = Descriptors.FileDescriptor.buildFrom(fileDescriptorProto, fdlist.toArray(fds));
-            }
-        } catch (Descriptors.DescriptorValidationException ex) {
-            log.error("Field mismatch in descriptor : {}",fileDescriptorProto.getName());
+            Descriptors.Descriptor descriptor = invoke();
+            dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
+            outputClass =  dynamicMessageProcessor.parse(input,response);
+        } catch (InvalidProtocolBufferException ex) {
+            log.error("Invalid protocol buffer parser : {}",ex.getMessage());
             throw new RuntimeException(ex);
-
-        } catch (CacheLoadingException ex) {
-            log.warn("Error loading from cache",ex.getMessage());
         }
-        return fileDescriptor;
+        return  outputClass;
     }
+
+
+
+
 }
