@@ -15,14 +15,9 @@ import java.util.List;
 public class ProtobufDecoder {
 
     private final ProtoDetail protoDetail;
-    private DynamicMessageProcessor dynamicMessageProcessor;
 
-    private ProtobufDecoder(String protoPath, String fullMessageName) {
+    public ProtobufDecoder(String protoPath, String fullMessageName) {
         this.protoDetail = new ProtoDetail(protoPath,fullMessageName);
-    }
-
-    public static ProtobufDecoder create(String protoPath, String fullMessageName) {
-        return new ProtobufDecoder(protoPath,fullMessageName);
     }
 
     public Descriptors.Descriptor invoke() {
@@ -32,11 +27,12 @@ public class ProtobufDecoder {
 
 
     public JsonObject decode(byte[] input) {
-        JsonObject jsonObject = null;
+        JsonObject jsonObject;
         try {
             Descriptors.Descriptor descriptor = invoke();
-            dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
+            DynamicMessageProcessor dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);;
             jsonObject = dynamicMessageProcessor.parse(input);
+
         }catch(InvalidProtocolBufferException ex) {
             log.error("Invalid protocol buffer parser : {}",ex.getMessage());
             throw new RuntimeException(ex);
@@ -45,10 +41,10 @@ public class ProtobufDecoder {
     }
 
     public <T> T decode(byte[] input, Class <T> response) {
-        T outputClass = null ;
+        T outputClass ;
         try {
             Descriptors.Descriptor descriptor = invoke();
-            dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
+            DynamicMessageProcessor dynamicMessageProcessor = new DynamicMessageProcessor(descriptor);
             outputClass =  dynamicMessageProcessor.parse(input,response);
         } catch (InvalidProtocolBufferException ex) {
             log.error("Invalid protocol buffer parser : {}",ex.getMessage());

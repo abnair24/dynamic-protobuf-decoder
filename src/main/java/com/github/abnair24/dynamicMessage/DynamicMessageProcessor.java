@@ -4,7 +4,6 @@ import com.github.abnair24.exception.JsonFormatException;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -17,11 +16,9 @@ public class DynamicMessageProcessor {
 
     private final Descriptors.Descriptor descriptor;
     private DynamicMessage dynamicMessage;
-    private JsonFormat.Printer printer;
 
     public DynamicMessageProcessor(Descriptors.Descriptor descriptor) {
         this.descriptor = descriptor;
-        printer = JsonFormat.printer();
     }
 
     public DynamicMessage toDynamicMessage(byte[] inputData) {
@@ -34,7 +31,7 @@ public class DynamicMessageProcessor {
     }
 
     public DynamicMessage toDynamicMessage(String json) throws JsonFormatException {
-        Message.Builder builder = null;
+        Message.Builder builder;
         try {
             JsonFormat.Parser parser = JsonFormat.parser();
             builder = DynamicMessage.newBuilder(descriptor);
@@ -57,14 +54,17 @@ public class DynamicMessageProcessor {
     }
 
     public String toJson(Message message) throws InvalidProtocolBufferException {
-        return printer.print(message);
+        return JsonFormat.printer().print(message);
     }
 
     public JsonObject toJsonObject(Message message) throws InvalidProtocolBufferException {
-        JsonParser jsonParser = new JsonParser();
 
-        String response = toJson(message);
-        return jsonParser.parse(response).getAsJsonObject();
+        return toClassObject(message, JsonObject.class);
+//
+//        JsonParser jsonParser = new JsonParser();
+//
+//        String response = toJson(message);
+//        return jsonParser.parse(response).getAsJsonObject();
     }
 
     public <T> T toClassObject(Message message, Class<T> outputClass) throws InvalidProtocolBufferException {

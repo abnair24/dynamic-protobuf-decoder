@@ -9,8 +9,9 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 @Getter
@@ -25,8 +26,8 @@ public class ProtoDetail {
 
     public ProtoDetail(String protoPath, String fullMessageName)
     {
-        this.fullMessageName = fullMessageName;
         this.protoPath = protoPath;
+        this.fullMessageName = fullMessageName;
         this.packageName = findPackageName(fullMessageName);
         this.messageName = findMessageName(fullMessageName, packageName.length());
         this.protoFiles = getAllProtoFiles(protoPath);
@@ -34,16 +35,23 @@ public class ProtoDetail {
     }
 
     private List<String> getAllProtoFiles(String protoPath) {
-        List<String> protoFilesPaths = new ArrayList<>();
+
+        List<String> protoFilePaths=null;
 
         Path path = Paths.get(protoPath);
 
-        try(DirectoryStream<Path> directoryStream = Files.newDirectoryStream(path,"*.proto")) {
-            directoryStream.forEach(p -> protoFilesPaths.add(p.toString()));
-        } catch(IOException ex) {
+        try(DirectoryStream<Path> directoryStream = Files.newDirectoryStream(path, "*.proto"))
+        {
+            protoFilePaths = StreamSupport
+                    .stream(directoryStream.spliterator(), false)
+                    .map(Path::toString)
+                    .collect(Collectors.toList());
+        }
+        catch(IOException ex) {
             log.error("Proto path error : {}",path.toString());
         }
-        return protoFilesPaths;
+
+        return protoFilePaths;
     }
 
     private String findPackageName(String fullMethodName) {
